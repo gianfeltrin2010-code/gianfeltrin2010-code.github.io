@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flugsim</title>
+  <meta name="description" content="Flugsimulator im Browser: mit Verkehrsflugzeugen um die ganze Welt fliegen.">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.146.0/Build/Cesium/Widgets/widgets.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/cesium@1.146.0/Build/Cesium/Cesium.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+  <div id="cesium"></div>
+  <canvas id="hud"></canvas>
+
+  <!-- Oben links: Ort und Zeit -->
+  <div id="topbar" class="panel">
+    <div id="airport">–</div>
+    <div id="clock">–</div>
+    <div id="source" class="muted">–</div>
+  </div>
+
+  <!-- Oben rechts: Knöpfe -->
+  <div id="buttons">
+    <button id="helpBtn" title="Hilfe (H)">? Hilfe</button>
+    <button id="menuBtn" title="Menü (M)">☰ Menü</button>
+  </div>
+
+  <!-- Unten: Fluganzeige -->
+  <div id="strip" class="panel">
+    <div><span class="lbl">Tempo</span><b id="sSpd">0</b><span class="unit">kt</span></div>
+    <div><span class="lbl">Höhe</span><b id="sAlt">0</b><span class="unit">ft</span></div>
+    <div><span class="lbl">Kurs</span><b id="sHdg">000°</b></div>
+    <div><span class="lbl">Steigen</span><b id="sVs">0</b><span class="unit">ft/min</span></div>
+    <div class="thr"><span class="lbl">Schub</span><b id="sThr">0%</b><i><em id="thrBar"></em></i></div>
+    <div><span class="lbl">Klappen</span><b id="sFlaps">2</b></div>
+    <div><span class="lbl">Fahrwerk</span><b id="sGear">UNTEN</b></div>
+    <div><span class="lbl">Bremse</span><b id="sBrk">AN</b></div>
+    <div><span class="lbl">Autopilot</span><b id="sAp">AUS</b></div>
+  </div>
+  <div id="stallWarn">STALL – Nase runter, Schub erhöhen!</div>
+
+  <!-- Menü -->
+  <div id="menu" class="panel">
+    <h2>Menü</h2>
+    <label>Kamera <select id="camSelect"></select></label>
+    <label>Grafik
+      <select id="gfxSelect">
+        <option value="niedrig">Niedrig (schwacher Laptop)</option>
+        <option value="mittel">Mittel</option>
+        <option value="hoch">Hoch (starke Grafikkarte)</option>
+      </select>
+    </label>
+    <label>Uhrzeit verschieben: <span id="timeLabel">jetzt</span>
+      <input id="timeSlider" type="range" min="-12" max="12" step="0.5" value="0">
+    </label>
+    <button id="timeNow" class="small">Zurück zur echten Zeit</button>
+    <label class="check"><input id="invertPitch" type="checkbox"> Höhenruder umkehren (↑ = Nase hoch)</label>
+    <button id="restartBtn">Neustart auf der Piste</button>
+  </div>
+
+  <!-- Hilfe -->
+  <div id="help" class="panel">
+    <h2>Tasten</h2>
+    <div class="cols">
+      <dl>
+        <dt>S / ↓</dt><dd>Nase hoch (ziehen)</dd>
+        <dt>W / ↑</dt><dd>Nase runter (drücken)</dd>
+        <dt>A D / ← →</dt><dd>Rollen (Kurve)</dd>
+        <dt>Q / E</dt><dd>Seitenruder, am Boden lenken</dd>
+        <dt>Shift, Bild↑, +</dt><dd>Mehr Schub</dd>
+        <dt>X, Bild↓, −</dt><dd>Weniger Schub</dd>
+      </dl>
+      <dl>
+        <dt>B</dt><dd>Bremsen an/aus</dd>
+        <dt>G</dt><dd>Fahrwerk ein/aus</dd>
+        <dt>F / V</dt><dd>Klappen aus / ein</dd>
+        <dt>Z</dt><dd>Autopilot an/aus</dd>
+        <dt>C, 1, 2</dt><dd>Kamera wechseln</dd>
+        <dt>Maus ziehen / Rad</dt><dd>Umschauen / Zoom</dd>
+        <dt>P · R · M · H</dt><dd>Pause · Neustart · Menü · Hilfe</dd>
+      </dl>
+    </div>
+    <h3>So startest du</h3>
+    <ol>
+      <li><b>B</b> drücken: Bremsen lösen.</li>
+      <li><b>Shift</b> gedrückt halten, bis der Schub auf etwa 90 % steht.</li>
+      <li>Bei ca. <b>140 kt</b> sanft <b>S</b> (oder ↓) halten: Das Flugzeug hebt ab.</li>
+      <li>In der Luft: <b>G</b> (Fahrwerk ein), später <b>V</b> (Klappen ein).</li>
+      <li>Auf Reisehöhe: <b>Z</b> für den Autopiloten. Mit den Steuertasten änderst du dann Soll-Höhe, Soll-Kurs und Soll-Tempo.</li>
+    </ol>
+    <p class="muted">Klick irgendwo, um die Hilfe zu schliessen.</p>
+  </div>
+
+  <div id="toast"></div>
+  <div id="crash" class="panel">
+    <h2>Absturz</h2>
+    <p>Das ging leider schief. Tipp: mit ausgefahrenem Fahrwerk und weniger als 600 ft/min Sinkrate aufsetzen.</p>
+    <button id="crashRestart">Neu starten (R)</button>
+  </div>
+  <div id="loading"><div class="spinner"></div><p id="loadingText">Wird geladen …</p></div>
+
+  <script src="js/aircraft.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/flight.js"></script>
+  <script src="js/controls.js"></script>
+  <script src="js/cameras.js"></script>
+  <script src="js/hud.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
