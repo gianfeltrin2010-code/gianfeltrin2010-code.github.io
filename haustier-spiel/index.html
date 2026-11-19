@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffb84d">
+<title>Mein Haustier</title>
+<style>
+  :root {
+    --bg1: #ffe7a8; --bg2: #ffc3d8;
+    --ink: #3b2a4a; --muted: #7a6a88;
+    --card: #ffffff;
+    --hunger: #ff8a3d; --laune: #ff5fa2; --energie: #4fa8ff;
+    --green: #3ccf7a; --purple: #8b5cf6; --yellow: #ffcf33;
+    --radius: 22px;
+    --shadow: 0 6px 0 rgba(59,42,74,.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(170deg, var(--bg1), var(--bg2));
+    background-attachment: fixed;
+    user-select: none; -webkit-user-select: none;
+    overscroll-behavior: none;
+  }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; touch-action: manipulation; }
+  .app { max-width: 480px; margin: 0 auto; min-height: 100%; padding: calc(12px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; }
+  .screen { display: none; flex-direction: column; gap: 12px; flex: 1; }
+  .screen.active { display: flex; }
+
+  /* Start */
+  .title { text-align: center; font-size: 34px; font-weight: 900; margin-top: 16px; }
+  .subtitle { text-align: center; color: var(--muted); font-size: 18px; }
+  .pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+  .pick button { background: var(--card); border-radius: var(--radius); padding: 14px 6px 12px; box-shadow: var(--shadow); font-size: 17px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 4px; border: 4px solid transparent; transition: transform .15s; }
+  .pick button svg { width: 80px; height: 80px; }
+  .pick button.sel { border-color: var(--purple); transform: translateY(-3px); }
+  .name-input { width: 100%; font: inherit; font-size: 22px; font-weight: 800; text-align: center; padding: 16px; border-radius: var(--radius); border: 4px solid #fff; background: #fff; box-shadow: var(--shadow); color: var(--ink); outline: none; user-select: text; -webkit-user-select: text; }
+  .name-input:focus { border-color: var(--purple); }
+  .big-btn { width: 100%; min-height: 64px; border-radius: var(--radius); font-size: 22px; font-weight: 900; color: #fff; background: var(--green); box-shadow: 0 6px 0 #26a35d; transition: transform .1s, box-shadow .1s; }
+  .big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #26a35d; }
+  .big-btn:disabled { background: #c9c2d1; box-shadow: 0 6px 0 #a59eae; }
+
+  /* Top bar */
+  .top { display: flex; align-items: center; gap: 8px; }
+  .pill { background: var(--card); border-radius: 999px; padding: 8px 14px; font-weight: 900; font-size: 17px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .pill.name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .icon-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--card); box-shadow: var(--shadow); font-size: 20px; display: grid; place-items: center; flex: 0 0 auto; }
+
+  .xp { background: var(--card); border-radius: 999px; height: 14px; overflow: hidden; box-shadow: inset 0 2px 0 rgba(0,0,0,.06); }
+  .xp i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--purple), #c084fc); border-radius: 999px; transition: width .5s; }
+
+  /* Pet stage */
+  .stage { position: relative; background: radial-gradient(circle at 50% 40%, #fff 0%, #fff6e6 70%); border-radius: 28px; box-shadow: var(--shadow); height: 300px; overflow: hidden; }
+  .stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: #c6f0b8; border-top: 4px solid #a7e295; }
+  .pet { position: absolute; left: 50%; bottom: 40px; width: 190px; height: 190px; transform: translateX(-50%); z-index: 2; }
+  .pet svg { width: 100%; height: 100%; overflow: visible; }
+  .pet.bounce { animation: bounce .6s; }
+  .pet.idle svg { animation: breathe 3s ease-in-out infinite; transform-origin: 50% 100%; }
+  .pet.sleep svg { filter: brightness(.9); }
+  @keyframes bounce { 0%,100% { transform: translateX(-50%) translateY(0); } 40% { transform: translateX(-50%) translateY(-34px); } 70% { transform: translateX(-50%) translateY(0) scaleY(.92); } }
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03, .98); } }
+  .mood { position: absolute; top: 12px; left: 12px; z-index: 3; background: #fff; border-radius: 999px; padding: 6px 12px; font-weight: 800; font-size: 15px; box-shadow: 0 3px 0 rgba(0,0,0,.08); }
+  .item { position: absolute; z-index: 1; font-size: 44px; line-height: 1; filter: drop-shadow(0 3px 0 rgba(0,0,0,.1)); animation: pop .4s; }
+  .item.basket { left: 50%; bottom: 22px; transform: translateX(-50%); font-size: 0; width: 220px; height: 60px; z-index: 1; }
+  .item.basket div { width: 100%; height: 100%; background: repeating-linear-gradient(90deg, #d08a4a 0 12px, #b9733a 12px 24px); border-radius: 0 0 110px 110px / 0 0 60px 60px; border-top: 8px solid #8a5426; }
+  .item.food { left: 18px; bottom: 26px; z-index: 3; }
+  .item.toy { right: 18px; bottom: 26px; z-index: 3; }
+  .zzz { position: absolute; right: 70px; top: 50px; z-index: 3; font-size: 30px; font-weight: 900; color: var(--energie); animation: float 2s infinite; display: none; }
+  .pet.sleep ~ .zzz { display: block; }
+  @keyframes float { 0% { opacity: 0; transform: translateY(10px); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
+  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+  .item.basket { animation: none; }
+  .fx { position: absolute; z-index: 5; font-size: 26px; font-weight: 900; pointer-events: none; animation: rise 1s forwards; }
+  @keyframes rise { to { transform: translateY(-80px); opacity: 0; } }
+
+  /* Stats */
+  .stats { background: var(--card); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); display: grid; gap: 10px; }
+  .stat { display: grid; grid-template-columns: 34px 82px 1fr 38px; align-items: center; gap: 6px; font-weight: 800; font-size: 16px; }
+  .stat .e { font-size: 24px; }
+  .bar { height: 18px; background: #f1ecf5; border-radius: 999px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; transition: width .5s; }
+  .stat .v { text-align: right; color: var(--muted); font-size: 15px; }
+
+  /* Actions */
+  .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .act { min-height: 92px; border-radius: var(--radius); color: #fff; font-weight: 900; font-size: 17px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: transform .1s, box-shadow .1s, opacity .2s; }
+  .act span { font-size: 34px; }
+  .act:active { transform: translateY(4px); }
+  .act:disabled { opacity: .5; }
+  .a-feed { background: var(--hunger); box-shadow: 0 6px 0 #d66a22; }
+  .a-play { background: var(--laune); box-shadow: 0 6px 0 #d63f82; }
+  .a-sleep { background: var(--energie); box-shadow: 0 6px 0 #2d84d6; }
+  .a-game { background: var(--purple); box-shadow: 0 6px 0 #6a3fd1; }
+  .a-shop { background: var(--yellow); color: var(--ink); box-shadow: 0 6px 0 #d9a800; }
+  .actions.two { grid-template-columns: 1fr 1fr; }
+  .actions.two .act { min-height: 72px; flex-direction: row; gap: 10px; }
+  .actions.two .act span { font-size: 28px; }
+
+  /* Modal */
+  .modal { position: fixed; inset: 0; z-index: 50; background: rgba(59,42,74,.45); display: none; align-items: flex-end; justify-content: center; padding: 16px; }
+  .modal.open { display: flex; }
+  .sheet { width: 100%; max-width: 480px; background: #fff; border-radius: 28px; padding: 22px 18px calc(18px + env(safe-area-inset-bottom)); animation: up .3s; max-height: 90vh; overflow: auto; }
+  .sheet.center { align-self: center; text-align: center; }
+  @keyframes up { from { transform: translateY(40px); opacity: 0; } }
+  .sheet h2 { font-size: 26px; font-weight: 900; text-align: center; }
+  .sheet p { color: var(--muted); font-size: 17px; text-align: center; margin-top: 6px; }
+  .sheet .huge { font-size: 70px; margin: 8px 0; }
+  .sheet .big-btn { margin-top: 18px; }
+  .shop-list { display: grid; gap: 10px; margin-top: 16px; }
+  .shop-item { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 12px; background: #fbf7ff; border-radius: 18px; padding: 12px; }
+  .shop-item .ic { font-size: 40px; text-align: center; }
+  .shop-item b { font-size: 18px; display: block; }
+  .shop-item small { color: var(--muted); font-size: 14px; }
+  .buy { min-width: 92px; min-height: 52px; border-radius: 16px; font-weight: 900; font-size: 17px; background: var(--yellow); box-shadow: 0 4px 0 #d9a800; }
+  .buy:disabled { background: #e7e1ec; box-shadow: none; color: var(--muted); }
+  .buy.owned { background: var(--green); color: #fff; box-shadow: none; }
+  .close-btn { width: 100%; min-height: 56px; border-radius: 18px; background: #f1ecf5; font-weight: 900; font-size: 18px; margin-top: 14px; }
+
+  /* Minigame */
+  .game { position: fixed; inset: 0; z-index: 40; background: linear-gradient(170deg, #b8f0ff, #c9f7c4); display: none; flex-direction: column; }
+  .game.open { display: flex; }
+  .game-top { display: flex; justify-content: space-between; align-items: center; padding: calc(14px + env(safe-area-inset-top)) 16px 10px; gap: 8px; }
+  .field { position: relative; flex: 1; margin: 0 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 28px; background: rgba(255,255,255,.5); overflow: hidden; touch-action: none; }
+  .ball { position: absolute; width: 84px; height: 84px; border-radius: 50%; font-size: 64px; line-height: 84px; text-align: center; background: none; transition: left .15s, top .15s; }
+  .ball:active { transform: scale(.85); }
+  .ready { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 20px; }
+  .ready h2 { font-size: 30px; font-weight: 900; }
+  .ready p { font-size: 18px; color: var(--muted); margin: 8px 0 20px; }
+
+  .toast { position: fixed; left: 50%; top: calc(16px + env(safe-area-inset-top)); transform: translate(-50%, -100px); background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 999px; font-weight: 800; font-size: 16px; z-index: 60; transition: transform .3s; max-width: 92vw; text-align: center; }
+  .toast.show { transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Startbildschirm -->
+  <section class="screen" id="start">
+    <h1 class="title">Mein Haustier</h1>
+    <p class="subtitle">Wähle dein Tier aus.</p>
+    <div class="pick" id="pick">
+      <button data-type="hund"><svg viewBox="0 0 200 200"></svg>Hund</button>
+      <button data-type="katze"><svg viewBox="0 0 200 200"></svg>Katze</button>
+      <button data-type="hase"><svg viewBox="0 0 200 200"></svg>Hase</button>
+    </div>
+    <p class="subtitle" style="margin-top:8px">Wie soll es heissen?</p>
+    <input class="name-input" id="nameInput" maxlength="14" placeholder="Name" autocomplete="off">
+    <button class="big-btn" id="startBtn" disabled>Los geht's!</button>
+  </section>
+
+  <!-- Hauptbildschirm -->
+  <section class="screen" id="home">
+    <div class="top">
+      <div class="pill name" id="petName"></div>
+      <div class="pill">⭐ <span id="level">1</span></div>
+      <div class="pill">🪙 <span id="coins">0</span></div>
+      <button class="icon-btn" id="menuBtn" aria-label="Einstellungen">⚙️</button>
+    </div>
+    <div class="xp" title="Erfahrung"><i id="xpBar"></i></div>
+
+    <div class="stage" id="stage">
+      <div class="mood" id="mood"></div>
+      <div id="items"></div>
+      <div class="pet idle" id="pet"><svg viewBox="0 0 200 200" id="petSvg"></svg></div>
+      <div class="zzz">Z z z</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><span class="e">🍖</span>Hunger<div class="bar"><i id="bHunger" style="background:var(--hunger)"></i></div><span class="v" id="vHunger"></span></div>
+      <div class="stat"><span class="e">😊</span>Laune<div class="bar"><i id="bLaune" style="background:var(--laune)"></i></div><span class="v" id="vLaune"></span></div>
+      <div class="stat"><span class="e">⚡</span>Energie<div class="bar"><i id="bEnergie" style="background:var(--energie)"></i></div><span class="v" id="vEnergie"></span></div>
+    </div>
+
+    <div class="actions">
+      <button class="act a-feed" data-act="feed"><span>🍖</span>Füttern</button>
+      <button class="act a-play" data-act="play"><span>🧶</span>Spielen</button>
+      <button class="act a-sleep" data-act="sleep"><span>💤</span>Schlafen</button>
+    </div>
+    <div class="actions two">
+      <button class="act a-game" id="gameBtn"><span>⚽</span>Ballspiel</button>
+      <button class="act a-shop" id="shopBtn"><span>🛍️</span>Shop</button>
+    </div>
+  </section>
+</div>
+
+<!-- Minispiel -->
+<div class="game" id="game">
+  <div class="game-top">
+    <div class="pill">⏱️ <span id="gTime">15</span> s</div>
+    <div class="pill">🎯 <span id="gHits">0</span></div>
+    <button class="icon-btn" id="gClose" aria-label="Schliessen">✖️</button>
+  </div>
+  <div class="field" id="field">
+    <div class="ready" id="ready">
+      <div>
+        <h2>Ballspiel</h2>
+        <p>Tippe den Ball so oft du kannst an.<br>Du hast 15 Sekunden.</p>
+        <button class="big-btn" id="gStart">Start!</button>
+      </div>
+    </div>
+    <button class="ball" id="ball" style="display:none" aria-label="Ball">⚽</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- Einstellungen (zum Testen leicht änderbar) ----------
+  const CFG = {
+    key: 'haustier-v1',
+    // Abnahme pro Minute (online und offline)
+    decayPerMin: { hunger: 0.3, laune: 0.25, energie: 0.2 },
+    minValue: 20,            // kinderfreundlich: nie tiefer
+    cooldownMs: 2500,
+    dailyBonus: 25,
+    gameSeconds: 15,
+    coinsPerHit: 1,
+    xpForLevel: lvl => 40 + lvl * 20,
+  };
+
+  const SHOP = [
+    { id: 'food',   icon: '🦴', name: 'Leckerli',  info: 'Füttern macht doppelt satt', price: 15 },
+    { id: 'toy',    icon: '🎾', name: 'Spielzeug', info: 'Spielen macht mehr Spass',   price: 25 },
+    { id: 'collar', icon: '🎀', name: 'Halsband',  info: 'Sieht einfach toll aus',     price: 40 },
+    { id: 'basket', icon: '🧺', name: 'Körbchen',  info: 'Schlafen gibt mehr Energie', price: 60 },
+  ];
+
+  const PETS = {
+    hund:  { name: 'Hund',  fur: '#d9a066', dark: '#a8703c', inner: '#f3d2ab' },
+    katze: { name: 'Katze', fur: '#9aa3b5', dark: '#6b7489', inner: '#ffc4d6' },
+    hase:  { name: 'Hase',  fur: '#f2ece4', dark: '#cfc3b4', inner: '#ffc4d6' },
+  };
+
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const today = () => new Date().toLocaleDateString('sv-SE'); // JJJJ-MM-TT, lokale Zeit
+
+  // ---------- Speicher ----------
+  let S = null;
+  function load() {
+    try { S = JSON.parse(localStorage.getItem(CFG.key)); } catch { S = null; }
+  }
+  function save() {
+    const now = Date.now();
+    if (S.last) applyDecay(now - S.last);
+    S.last = now;
+    try { localStorage.setItem(CFG.key, JSON.stringify(S)); } catch {}
+  }
+  function newState(type, name) {
+    return { type, name, hunger: 80, laune: 80, energie: 80, coins: 10, xp: 0, level: 1,
+             items: [], last: Date.now(), bonusDay: null, sleeping: false, collarOn: true };
+  }
+
+  // Werte anhand der vergangenen Zeit senken, nie unter minValue
+  function applyDecay(ms) {
+    const min = ms / 60000;
+    for (const k of ['hunger', 'laune', 'energie']) {
+      if (S[k] <= CFG.minValue) continue;
+      S[k] = Math.max(CFG.minValue, S[k] - CFG.decayPerMin[k] * min);
+    }
+  }
+
+  // ---------- Tier zeichnen (SVG) ----------
+  function petSVG(type, mood, opts = {}) {
+    const c = PETS[type];
+    let ears = '';
+    if (type === 'hund') ears = `
+      <ellipse cx="45" cy="95" rx="24" ry="44" fill="${c.dark}" transform="rotate(18 45 95)"/>
+      <ellipse cx="155" cy="95" rx="24" ry="44" fill="${c.dark}" transform="rotate(-18 155 95)"/>`;
+    if (type === 'katze') ears = `
+      <path d="M42 80 L52 20 L95 55 Z" fill="${c.fur}"/><path d="M52 68 L57 36 L80 56 Z" fill="${c.inner}"/>
+      <path d="M158 80 L148 20 L105 55 Z" fill="${c.fur}"/><path d="M148 68 L143 36 L120 56 Z" fill="${c.inner}"/>`;
+    if (type === 'hase') ears = `
+      <ellipse cx="72" cy="30" rx="17" ry="50" fill="${c.fur}" stroke="${c.dark}" stroke-width="3"/>
+      <ellipse cx="72" cy="34" rx="8" ry="38" fill="${c.inner}"/>
+      <ellipse cx="128" cy="30" rx="17" ry="50" fill="${c.fur}" stroke="${c.dark}" stroke-width="3"/>
+      <ellipse cx="128" cy="34" rx="8" ry="38" fill="${c.inner}"/>`;
+
+    let eyes, mouth, brows = '';
+    if (opts.sleep) {
+      eyes = `<path d="M62 108 q14 10 28 0" stroke="#3b2a4a" stroke-width="5" fill="none" stroke-linecap="round"/>
+              <path d="M110 108 q14 10 28 0" stroke="#3b2a4a" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+    } else {
+      eyes = `<circle cx="76" cy="106" r="11" fill="#3b2a4a"/><circle cx="124" cy="106" r="11" fill="#3b2a4a"/>
+              <circle cx="80" cy="102" r="4" fill="#fff"/><circle cx="128" cy="102" r="4" fill="#fff"/>`;
+    }
+    if (mood === 'happy') mouth = `<path d="M84 140 q16 18 32 0" stroke="#3b2a4a" stroke-width="5" fill="#ff7a9a" stroke-linecap="round"/>`;
+    else if (mood === 'neutral') mouth = `<path d="M86 144 h28" stroke="#3b2a4a" stroke-width="5" stroke-linecap="round"/>`;
+    else {
+      mouth = `<path d="M84 150 q16 -14 32 0" stroke="#3b2a4a" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+      brows = `<path d="M62 94 l20 -8" stroke="#3b2a4a" stroke-width="4" stroke-linecap="round"/>
+               <path d="M138 94 l-20 -8" stroke="#3b2a4a" stroke-width="4" stroke-linecap="round"/>
+               ${opts.sleep ? '' : '<ellipse cx="66" cy="124" rx="5" ry="8" fill="#7cc4ff"/>'}`;
+    }
+    const cheeks = mood === 'happy' ? `<circle cx="56" cy="128" r="9" fill="#ff9fb5" opacity=".7"/><circle cx="144" cy="128" r="9" fill="#ff9fb5" opacity=".7"/>` : '';
+    const whiskers = type === 'katze' ? `<g stroke="#3b2a4a" stroke-width="2.5" stroke-linecap="round" opacity=".6">
+      <path d="M40 126 h26"/><path d="M42 136 l24 -4"/><path d="M160 126 h-26"/><path d="M158 136 l-24 -4"/></g>` : '';
+    const teeth = type === 'hase' && mood !== 'sad' ? `<rect x="93" y="137" width="14" height="12" rx="2" fill="#fff" stroke="#3b2a4a" stroke-width="2"/>` : '';
+    const collar = opts.collar ? `<path d="M52 168 q48 26 96 0" stroke="#ff3d7f" stroke-width="12" fill="none" stroke-linecap="round"/>
+      <circle cx="100" cy="186" r="9" fill="#ffcf33" stroke="#d9a800" stroke-width="3"/>` : '';
+
+    return `${ears}
+      <ellipse cx="100" cy="118" rx="70" ry="64" fill="${c.fur}" stroke="${c.dark}" stroke-width="3"/>
+      <ellipse cx="100" cy="136" rx="34" ry="24" fill="${c.inner}" opacity=".55"/>
+      ${brows}${eyes}${cheeks}
+      <ellipse cx="100" cy="126" rx="9" ry="6" fill="#3b2a4a"/>
+      ${whiskers}${mouth}${teeth}${collar}`;
+  }
+
+  // ---------- Startbildschirm ----------
+  let chosen = null;
+  function showStart() {
+    $('start').classList.add('active'); $('home').classList.remove('active');
+    document.querySelectorAll('#pick button').forEach(b => {
+      b.querySelector('svg').innerHTML = petSVG(b.dataset.type, 'happy');
+      b.onclick = () => {
+        chosen = b.dataset.type;
+        document.querySelectorAll('#pick button').forEach(x => x.classList.toggle('sel', x === b));
+        checkStart();
+      };
+    });
+    $('nameInput').oninput = checkStart;
+  }
+  function checkStart() { $('startBtn').disabled = !(chosen && $('nameInput').value.trim()); }
+  $('startBtn').onclick = () => {
+    S = newState(chosen, $('nameInput').value.trim());
+    save(); showHome(); checkDaily();
+  };
+
+  // ---------- Hauptbildschirm ----------
+  function mood() {
+    const avg = (S.hunger + S.laune + S.energie) / 3;
+    const low = Math.min(S.hunger, S.laune, S.energie);
+    if (avg >= 65 && low >= 40) return 'happy';
+    if (avg >= 40) return 'neutral';
+    return 'sad';
+  }
+  const MOOD_TXT = { happy: 'Fröhlich 😄', neutral: 'Geht so 🙂', sad: 'Traurig 😢' };
+
+  function hint() {
+    const low = [['hunger', 'Ich habe Hunger!'], ['laune', 'Mir ist langweilig.'], ['energie', 'Ich bin müde.']]
+      .sort((a, b) => S[a[0]] - S[b[0]])[0];
+    return S[low[0]] < 45 ? low[1] : null;
+  }
+
+  function render() {
+    const m = mood();
+    $('petName').textContent = S.name;
+    $('coins').textContent = S.coins;
+    $('level').textContent = S.level;
+    $('xpBar').style.width = (S.xp / CFG.xpForLevel(S.level) * 100) + '%';
+    $('mood').textContent = S.sleeping ? 'Schläft 💤' : (hint() || MOOD_TXT[m]);
+    $('petSvg').innerHTML = petSVG(S.type, m, { sleep: S.sleeping, collar: S.items.includes('collar') });
+    $('pet').classList.toggle('sleep', S.sleeping);
+    for (const k of ['Hunger', 'Laune', 'Energie']) {
+      const v = Math.round(S[k.toLowerCase()]);
+      $('b' + k).style.width = v + '%';
+      $('v' + k).textContent = v;
+    }
+    renderItems();
+  }
+
+  function renderItems() {
+    const box = $('items'); let html = '';
+    if (S.items.includes('basket')) html += '<div class="item basket"><div></div></div>';
+    if (S.items.includes('food')) html += '<div class="item food">🦴</div>';
+    if (S.items.includes('toy')) html += '<div class="item toy">🎾</div>';
+    if (box.dataset.h !== html) { box.innerHTML = html; box.dataset.h = html; }
+  }
+
+  function showHome() {
+    $('start').classList.remove('active'); $('home').classList.add('active');
+    render();
+  }
+
+  // ---------- Aktionen ----------
+  const ACTIONS = {
+    feed:  { stat: 'hunger',  amount: 25, coins: 3, xp: 10, item: 'food',   txt: 'Mmh, lecker!' },
+    play:  { stat: 'laune',   amount: 22, coins: 3, xp: 12, item: 'toy',    txt: 'Juhu, das macht Spass!', cost: { energie: 6 } },
+    sleep: { stat: 'energie', amount: 30, coins: 2, xp: 8,  item: 'basket', txt: 'Gute Nacht ...' },
+  };
+  let cooling = false;
+
+  function doAction(key) {
+    if (cooling) return;
+    const a = ACTIONS[key];
+    if (S[a.stat] >= 99) { toast(`${S.name} braucht das gerade nicht.`); return; }
+    const boost = S.items.includes(a.item) ? 2 : 1;
+    S[a.stat] = clamp(S[a.stat] + a.amount * boost, 0, 100);
+    if (a.cost) for (const k in a.cost) S[k] = clamp(S[k] - a.cost[k], CFG.minValue, 100);
+    S.coins += a.coins;
+    fx('+' + a.coins + ' 🪙');
+    addXp(a.xp);
+
+    if (key === 'sleep') {
+      S.sleeping = true;
+      setTimeout(() => { S.sleeping = false; render(); }, CFG.cooldownMs);
+    } else {
+      $('pet').classList.remove('bounce'); void $('pet').offsetWidth; $('pet').classList.add('bounce');
+    }
+    toast(a.txt);
+    save(); render();
+
+    cooling = true;
+    document.querySelectorAll('[data-act]').forEach(b => b.disabled = true);
+    setTimeout(() => { cooling = false; document.querySelectorAll('[data-act]').forEach(b => b.disabled = false); }, CFG.cooldownMs);
+  }
+  document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => doAction(b.dataset.act));
+
+  function addXp(n) {
+    S.xp += n;
+    let up = false;
+    while (S.xp >= CFG.xpForLevel(S.level)) { S.xp -= CFG.xpForLevel(S.level); S.level++; up = true; }
+    if (up) {
+      const reward = 10 + S.level * 5;
+      S.coins += reward;
+      setTimeout(() => modal(`<div class="sheet center"><div class="huge">🎉</div><h2>Level ${S.level}!</h2>
+        <p>${esc(S.name)} ist gewachsen.<br>Du bekommst ${reward} Münzen.</p>
+        <button class="big-btn" data-close>Super!</button></div>`), 500);
+    }
+  }
+
+  function fx(txt) {
+    const el = document.createElement('div');
+    el.className = 'fx'; el.textContent = txt;
+    el.style.left = (45 + Math.random() * 20) + '%'; el.style.top = '40%';
+    $('stage').appendChild(el); setTimeout(() => el.remove(), 1000);
+  }
+
+  // ---------- Shop ----------
+  function openShop() {
+    const rows = SHOP.map(it => {
+      const owned = S.items.includes(it.id);
+      const can = S.coins >= it.price;
+      return `<div class="shop-item"><div class="ic">${it.icon}</div>
+        <div><b>${it.name}</b><small>${it.info}</small></div>
+        <button class="buy ${owned ? 'owned' : ''}" data-buy="${it.id}" ${owned || !can ? 'disabled' : ''}>
+          ${owned ? 'Gekauft' : it.price + ' 🪙'}</button></div>`;
+    }).join('');
+    modal(`<div class="sheet"><h2>Shop</h2><p>Du hast ${S.coins} 🪙 Spielmünzen.</p>
+      <div class="shop-list">${rows}</div><button class="close-btn" data-close>Schliessen</button></div>`);
+    document.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => {
+      const it = SHOP.find(x => x.id === b.dataset.buy);
+      if (S.coins < it.price || S.items.includes(it.id)) return;
+      S.coins -= it.price; S.items.push(it.id);
+      addXp(15); save(); render(); openShop();
+      toast(`${it.name} gekauft!`);
+    });
+  }
+  $('shopBtn').onclick = openShop;
+
+  // ---------- Minispiel ----------
+  let gTimer = null, gMove = null, hits = 0, left = 0, running = false;
+  $('gameBtn').onclick = () => {
+    $('game').classList.add('open');
+    $('ready').style.display = 'grid'; $('ball').style.display = 'none';
+    $('gTime').textContent = CFG.gameSeconds; $('gHits').textContent = 0;
+  };
+  $('gStart').onclick = () => {
+    hits = 0; left = CFG.gameSeconds; running = true;
+    $('ready').style.display = 'none'; $('ball').style.display = 'block';
+    $('gHits').textContent = 0; $('gTime').textContent = left;
+    moveBall();
+    gMove = setInterval(moveBall, 1100);
+    gTimer = setInterval(() => {
+      left--; $('gTime').textContent = left;
+      if (left <= 0) endGame();
+    }, 1000);
+  };
+  function moveBall() {
+    const f = $('field'), b = $('ball');
+    b.style.left = Math.random() * (f.clientWidth - 84) + 'px';
+    b.style.top = Math.random() * (f.clientHeight - 84) + 'px';
+  }
+  $('ball').addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (!running) return;
+    hits++; $('gHits').textContent = hits;
+    clearInterval(gMove); moveBall(); gMove = setInterval(moveBall, 1100);
+  });
+  function stopGame() { running = false; clearInterval(gTimer); clearInterval(gMove); }
+  function endGame() {
+    stopGame();
+    const coins = hits * CFG.coinsPerHit;
+    S.coins += coins;
+    S.laune = clamp(S.laune + Math.min(20, hits), 0, 100);
+    S.energie = clamp(S.energie - 5, CFG.minValue, 100);
+    addXp(Math.min(30, hits * 2));
+    save(); render();
+    $('game').classList.remove('open');
+    modal(`<div class="sheet center"><div class="huge">⚽</div><h2>${hits} Treffer!</h2>
+      <p>Du bekommst ${coins} Münzen.<br>${esc(S.name)} hatte viel Spass.</p>
+      <button class="big-btn" data-close>Weiter</button></div>`);
+  }
+  $('gClose').onclick = () => { stopGame(); $('game').classList.remove('open'); };
+
+  // ---------- Täglicher Bonus ----------
+  function checkDaily() {
+    if (S.bonusDay === today()) return;
+    S.bonusDay = today(); S.coins += CFG.dailyBonus; save(); render();
+    modal(`<div class="sheet center"><div class="huge">🎁</div><h2>Tagesbonus!</h2>
+      <p>Schön, dass du da bist.<br>Hier sind ${CFG.dailyBonus} Münzen.</p>
+      <button class="big-btn" data-close>Danke!</button></div>`);
+  }
+
+  // ---------- Einstellungen ----------
+  $('menuBtn').onclick = () => {
+    modal(`<div class="sheet center"><h2>Einstellungen</h2>
+      <p>Alle Daten bleiben nur auf diesem Gerät.</p>
+      <button class="close-btn" id="resetBtn" style="background:#ffe1e1;color:#c0392b">Neu anfangen</button>
+      <button class="close-btn" data-close>Zurück</button></div>`);
+    $('resetBtn').onclick = () => {
+      $('resetBtn').textContent = 'Wirklich? Nochmals tippen';
+      $('resetBtn').onclick = () => {
+        try { localStorage.removeItem(CFG.key); } catch {}
+        S = null; closeModal(); chosen = null; $('nameInput').value = ''; checkStart();
+        document.querySelectorAll('#pick button').forEach(x => x.classList.remove('sel'));
+        showStart();
+      };
+    };
+  };
+
+  // ---------- Hilfen ----------
+  function modal(html) {
+    $('sheet').outerHTML = html.replace('class="sheet', 'id="sheet" class="sheet');
+    $('modal').classList.add('open');
+    $('modal').querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal);
+  }
+  function closeModal() { $('modal').classList.remove('open'); }
+  $('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+
+  let tt;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+  function esc(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+
+  // ---------- Spielschleife ----------
+  setInterval(() => {
+    if (!S) return;
+    save(); render();
+  }, 5000);
+  document.addEventListener('visibilitychange', () => {
+    if (!S) return;
+    if (document.hidden) save();
+    else { save(); render(); checkDaily(); }
+  });
+
+  // ---------- Start ----------
+  load();
+  if (S && S.type) {
+    S.sleeping = false;
+    save(); showHome(); checkDaily();
+  } else {
+    S = null; showStart();
+  }
+})();
+</script>
+</body>
+</html>
