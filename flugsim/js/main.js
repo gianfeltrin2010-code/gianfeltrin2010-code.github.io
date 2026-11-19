@@ -56,14 +56,17 @@
   layers.add(C.ImageryLayer.fromProviderAsync(
     C.TileMapServiceImageryProvider.fromUrl(C.buildModuleUrl("Assets/Textures/NaturalEarthII"))
   ));
-  if (token) {
+  if (CFG.nurEingebauteKarte) {
+    // Demo/Offline: nur die mitgelieferte Weltkarte, keine Online-Kartendienste
+  } else if (token) {
     layers.add(C.ImageryLayer.fromWorldImagery({ style: C.IonWorldImageryStyle.AERIAL }));
   } else {
     layers.add(C.ImageryLayer.fromProviderAsync(
       C.ArcGisMapServerImageryProvider.fromBasemapType(C.ArcGisBaseMapType.SATELLITE)
     ));
   }
-  let sourceLabel = token ? "Cesium ion: Gelände + Bing-Satellitenbilder" : "Ohne Schlüssel: Esri-Satellitenbilder, flaches Gelände";
+  let sourceLabel = CFG.nurEingebauteKarte ? "Demo: eingebaute Weltkarte (grob), flaches Gelände"
+    : token ? "Cesium ion: Gelände + Bing-Satellitenbilder" : "Ohne Schlüssel: Esri-Satellitenbilder, flaches Gelände";
 
   async function loadPhotoreal() {
     if (!token || CFG.googlePhotorealistic === false) return;
@@ -359,7 +362,7 @@
       state.ready = true;
       setCamera("chase");
       $("loading").classList.add("hide");
-      if (!token) toast("Tipp: Mit einem kostenlosen Cesium-Schlüssel gibt es Berge und 3D-Städte (siehe Anleitung).", 6000);
+      if (!token && !CFG.nurEingebauteKarte) toast("Tipp: Mit einem kostenlosen Cesium-Schlüssel gibt es Berge und 3D-Städte (siehe Anleitung).", 6000);
     } catch (e) {
       console.error(e);
       setLoading("Fehler beim Start: " + e.message);
